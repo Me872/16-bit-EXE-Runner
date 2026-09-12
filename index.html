@@ -3,1525 +3,1371 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>FrameForge — Local Video Frame Extractor</title>
+<title>16-bit EXE Runner</title>
+<link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css">
+<script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+
 <style>
-*{
-box-sizing:border-box;
-}
+*{box-sizing:border-box}
 
 html,body{
 margin:0;
 width:100%;
 height:100%;
-font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-background:#05070b;
-color:#f5f7fb;
-overflow-x:hidden;
+background:#07090d;
+color:#f4f7fb;
+font-family:Inter,Segoe UI,Arial,sans-serif;
+overflow:hidden
 }
 
 body{
-background:
-radial-gradient(circle at 15% 10%,rgba(70,100,255,.18),transparent 30%),
-radial-gradient(circle at 85% 20%,rgba(0,200,255,.12),transparent 28%),
-radial-gradient(circle at 50% 100%,rgba(120,50,255,.12),transparent 35%),
-#05070b;
+display:flex;
+flex-direction:column
 }
 
-body:before{
-content:"";
-position:fixed;
-inset:0;
-pointer-events:none;
-background:
-linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
-linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
-background-size:40px 40px;
-mask-image:linear-gradient(to bottom,black,transparent);
+.top{
+height:64px;
+display:flex;
+align-items:center;
+gap:9px;
+padding:10px 14px;
+background:rgba(20,23,30,.9);
+border-bottom:1px solid rgba(255,255,255,.08);
+backdrop-filter:blur(20px);
+z-index:10
 }
 
-.app{
-width:min(1250px,94vw);
-margin:35px auto 60px;
+.title{
+font-size:19px;
+font-weight:700;
+margin-right:auto;
+white-space:nowrap
+}
+
+button,.fileLabel{
+border:1px solid rgba(255,255,255,.12);
+background:rgba(255,255,255,.07);
+color:#fff;
+border-radius:10px;
+padding:9px 13px;
+font-size:13px;
+cursor:pointer;
+transition:.15s;
+user-select:none
+}
+
+button:hover,.fileLabel:hover{
+background:rgba(255,255,255,.13);
+transform:translateY(-1px)
+}
+
+button:active,.fileLabel:active{
+transform:translateY(0)
+}
+
+button:disabled{
+opacity:.4;
+cursor:not-allowed;
+transform:none
+}
+
+.fileLabel{
+display:inline-flex;
+align-items:center;
+gap:7px
+}
+
+#fileInput{
+display:none
+}
+
+.main{
+flex:1;
+min-height:0;
+display:flex
+}
+
+.stage{
 position:relative;
-z-index:1;
-}
-
-.header{
+flex:1;
+min-width:0;
+background:#000;
 display:flex;
 align-items:center;
-justify-content:space-between;
-gap:20px;
-margin-bottom:25px;
+justify-content:center;
+overflow:hidden
 }
 
-.brand{
+#dos{
+position:absolute;
+inset:0;
+width:100%;
+height:100%;
+background:#000
+}
+
+#dos canvas{
+image-rendering:auto
+}
+
+.placeholder{
+position:absolute;
+inset:0;
 display:flex;
 align-items:center;
+justify-content:center;
+flex-direction:column;
+gap:10px;
+color:#818895;
+pointer-events:none;
+background:radial-gradient(circle at center,rgba(35,42,55,.18),transparent 60%)
+}
+
+.placeholder .big{
+font-size:48px;
+opacity:.7
+}
+
+.placeholder strong{
+font-size:18px;
+color:#d9dde5
+}
+
+.placeholder span{
+font-size:13px
+}
+
+.loader{
+position:absolute;
+inset:0;
+background:rgba(3,5,8,.9);
+display:none;
+align-items:center;
+justify-content:center;
+flex-direction:column;
 gap:15px;
+z-index:20;
+backdrop-filter:blur(12px)
 }
 
-.logo{
-width:55px;
-height:55px;
-border-radius:17px;
-display:grid;
-place-items:center;
-font-size:26px;
-font-weight:900;
-background:
-linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.04)),
-linear-gradient(135deg,#5274ff,#6f32ff);
-box-shadow:
-0 15px 40px rgba(60,70,255,.28),
-inset 0 1px 1px rgba(255,255,255,.4);
+.loader.show{
+display:flex
 }
 
-h1{
-font-size:26px;
-margin:0;
-letter-spacing:-.7px;
+.spinner{
+width:34px;
+height:34px;
+border-radius:50%;
+border:3px solid rgba(255,255,255,.15);
+border-top-color:#fff;
+animation:spin .8s linear infinite
 }
 
-.subtitle{
-margin-top:4px;
-color:#8e98aa;
+@keyframes spin{
+to{transform:rotate(360deg)}
+}
+
+.loaderText{
 font-size:14px;
+color:#cbd1da
 }
 
-.badge{
-padding:8px 12px;
-border:1px solid rgba(255,255,255,.1);
-border-radius:999px;
-background:rgba(255,255,255,.04);
-color:#9da8ba;
-font-size:12px;
-}
-
-.grid{
-display:grid;
-grid-template-columns:350px 1fr;
-gap:20px;
-}
-
-.panel{
-background:
-linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.025));
-border:1px solid rgba(255,255,255,.09);
-border-radius:24px;
-box-shadow:
-0 25px 80px rgba(0,0,0,.35),
-inset 0 1px 0 rgba(255,255,255,.06);
-backdrop-filter:blur(25px);
--webkit-backdrop-filter:blur(25px);
-overflow:hidden;
-}
-
-.controls{
-padding:20px;
+.side{
+width:310px;
+min-width:310px;
+background:rgba(15,18,24,.97);
+border-left:1px solid rgba(255,255,255,.08);
+display:flex;
+flex-direction:column;
+overflow:hidden
 }
 
 .section{
-margin-bottom:22px;
+padding:14px;
+border-bottom:1px solid rgba(255,255,255,.07)
 }
 
-.section-title{
-font-size:11px;
-font-weight:800;
-letter-spacing:1.2px;
+.section h3{
+margin:0 0 11px;
+font-size:12px;
 text-transform:uppercase;
-color:#778398;
-margin-bottom:10px;
+letter-spacing:.12em;
+color:#8d96a5
 }
 
-.dropzone{
-min-height:170px;
-border:1px dashed rgba(130,150,255,.35);
-border-radius:18px;
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-text-align:center;
-padding:20px;
-cursor:pointer;
-background:rgba(80,100,255,.045);
-transition:.2s;
+.meta{
+display:grid;
+grid-template-columns:92px 1fr;
+gap:7px;
+font-size:12px
 }
 
-.dropzone:hover,
-.dropzone.drag{
-border-color:#7186ff;
-background:rgba(80,100,255,.09);
-transform:translateY(-1px);
+.meta b{
+color:#8d96a5;
+font-weight:500
 }
 
-.drop-icon{
-font-size:36px;
-margin-bottom:8px;
-}
-
-.drop-title{
-font-weight:800;
-}
-
-.drop-sub{
-font-size:12px;
-color:#758095;
-margin-top:5px;
-}
-
-input[type=file]{
-display:none;
-}
-
-.field{
-margin-bottom:13px;
-}
-
-label{
-display:block;
-font-size:12px;
-font-weight:700;
-color:#9aa5b7;
-margin-bottom:7px;
-}
-
-select,
-button{
-font:inherit;
-}
-
-select{
-width:100%;
-padding:11px 12px;
-border-radius:12px;
-border:1px solid rgba(255,255,255,.09);
-background:rgba(0,0,0,.28);
-color:#f4f6fa;
-outline:none;
-}
-
-select:focus{
-border-color:#6c7dff;
-}
-
-button{
-border:0;
-border-radius:12px;
-padding:11px 14px;
-font-weight:800;
-cursor:pointer;
-transition:.18s;
-}
-
-button:hover{
-transform:translateY(-1px);
-filter:brightness(1.08);
-}
-
-button:active{
-transform:translateY(0);
-}
-
-.primary{
-width:100%;
-background:linear-gradient(135deg,#6078ff,#7b42ff);
-color:white;
-box-shadow:0 10px 30px rgba(82,80,255,.25);
-}
-
-.secondary{
-background:rgba(255,255,255,.065);
-border:1px solid rgba(255,255,255,.09);
-color:#dfe4ed;
-}
-
-.danger{
-background:rgba(255,70,90,.1);
-border:1px solid rgba(255,70,90,.18);
-color:#ff9da8;
-}
-
-.row{
-display:flex;
-gap:8px;
-}
-
-.row>*{
-flex:1;
-}
-
-.preview{
-min-height:650px;
-display:flex;
-flex-direction:column;
-}
-
-.preview-head{
-padding:16px 18px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-border-bottom:1px solid rgba(255,255,255,.07);
-}
-
-.preview-title{
-font-weight:800;
-}
-
-.status{
-font-size:11px;
-color:#7f8a9d;
-}
-
-.viewer{
-flex:1;
-display:flex;
-align-items:center;
-justify-content:center;
-padding:20px;
-min-height:470px;
-position:relative;
-background:
-radial-gradient(circle at center,rgba(50,70,120,.12),transparent 65%);
-}
-
-video,
-canvas,
-.result-image{
-max-width:100%;
-max-height:500px;
-border-radius:16px;
-background:#000;
-box-shadow:
-0 20px 70px rgba(0,0,0,.45),
-0 0 0 1px rgba(255,255,255,.07);
-}
-
-video{
-display:none;
-}
-
-canvas{
-display:none;
-}
-
-.result-image{
-display:none;
-}
-
-.empty{
-text-align:center;
-color:#667186;
-}
-
-.empty-icon{
-font-size:50px;
-opacity:.5;
-margin-bottom:12px;
-}
-
-.empty-text{
-font-weight:700;
-}
-
-.empty-sub{
-font-size:12px;
-margin-top:5px;
-}
-
-.bottom{
-padding:16px 18px;
-border-top:1px solid rgba(255,255,255,.07);
-}
-
-.progress-wrap{
-height:8px;
-border-radius:999px;
+.meta span{
 overflow:hidden;
-background:rgba(255,255,255,.07);
-}
-
-.progress{
-height:100%;
-width:0%;
-background:linear-gradient(90deg,#6078ff,#a15cff);
-transition:width .12s;
-}
-
-.progress-text{
-display:flex;
-justify-content:space-between;
-font-size:11px;
-color:#778398;
-margin-top:7px;
-}
-
-.log{
-margin-top:12px;
-height:100px;
-overflow:auto;
-padding:10px;
-border-radius:12px;
-background:rgba(0,0,0,.22);
-border:1px solid rgba(255,255,255,.05);
-font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
-font-size:10px;
-color:#8290a8;
-white-space:pre-wrap;
-}
-
-.output-actions{
-display:none;
-gap:8px;
-margin-top:12px;
-}
-
-.output-actions button{
-flex:1;
-}
-
-.file-info{
-display:none;
-margin-top:10px;
-padding:10px;
-border-radius:12px;
-background:rgba(255,255,255,.035);
-border:1px solid rgba(255,255,255,.06);
-font-size:11px;
-color:#8e99aa;
-line-height:1.6;
-}
-
-.camera{
-margin-top:8px;
-}
-
-.footer{
-text-align:center;
-color:#4e596c;
-font-size:11px;
-margin-top:18px;
-}
-
-@media(max-width:850px){
-.grid{
-grid-template-columns:1fr;
-}
-
-.preview{
-min-height:500px;
-}
-
-.viewer{
-min-height:350px;
-}
-
-.header{
-align-items:flex-start;
+text-overflow:ellipsis;
+white-space:nowrap
 }
 
 .badge{
-display:none;
+display:inline-block;
+padding:3px 7px;
+border-radius:6px;
+background:rgba(255,255,255,.08);
+font-size:11px
+}
+
+#log{
+flex:1;
+min-height:0;
+overflow:auto;
+padding:12px;
+font-family:Consolas,Monaco,monospace;
+font-size:11px;
+line-height:1.55;
+white-space:pre-wrap;
+word-break:break-word;
+color:#b9c1ce
+}
+
+.logLine{
+margin-bottom:3px
+}
+
+.logTime{
+color:#596270
+}
+
+.logGood{
+color:#9ee493
+}
+
+.logWarn{
+color:#f4c76b
+}
+
+.logError{
+color:#ff8d8d
+}
+
+.bottom{
+height:34px;
+padding:0 12px;
+display:flex;
+align-items:center;
+gap:15px;
+font-size:11px;
+color:#737c89;
+background:#0b0e13;
+border-top:1px solid rgba(255,255,255,.06)
+}
+
+.dot{
+width:7px;
+height:7px;
+border-radius:50%;
+background:#777
+}
+
+.dot.good{
+background:#55d66b
+}
+
+.dot.warn{
+background:#e6b84c
+}
+
+.dot.bad{
+background:#ed6262
+}
+
+@media(max-width:800px){
+.side{
+width:250px;
+min-width:250px
+}
+
+.title{
+font-size:15px
+}
+
+.top button,.fileLabel{
+padding:8px 9px
 }
 }
 </style>
 </head>
+
 <body>
 
-<div class="app">
+<div class="top">
 
-<header class="header">
-<div class="brand">
-<div class="logo">▣</div>
-<div>
-<h1>FrameForge</h1>
-<div class="subtitle">Local video frame extractor & stacker</div>
+<div class="title">16-bit EXE Runner</div>
+
+<label class="fileLabel">
+📂 Open Program
+<input id="fileInput" type="file" multiple>
+</label>
+
+<button id="restartBtn" disabled>↻ Restart</button>
+<button id="pauseBtn" disabled>Ⅱ Pause</button>
+<button id="fullscreenBtn">⛶ Fullscreen</button>
+<button id="copyBtn">Copy Log</button>
+<button id="clearBtn">Clear</button>
+
 </div>
+
+<div class="main">
+
+<div class="stage" id="stage">
+
+<div id="dos"></div>
+
+<div class="placeholder" id="placeholder">
+<div class="big">▣</div>
+<strong>Select a DOS program</strong>
+<span>EXE, COM, BAT and companion files are supported</span>
 </div>
-<div class="badge">100% browser-side</div>
-</header>
 
-<div class="grid">
+<div class="loader" id="loader">
+<div class="spinner"></div>
+<div class="loaderText" id="loaderText">Starting DOSBox…</div>
+</div>
 
-<div class="panel controls">
+</div>
+
+<div class="side">
 
 <div class="section">
-<div class="section-title">Video</div>
 
-<div class="dropzone" id="dropzone">
-<div class="drop-icon">🎞️</div>
-<div class="drop-title">Drop a video here</div>
-<div class="drop-sub">or click to choose a file</div>
-<input id="fileInput" type="file" accept="video/*">
-</div>
+<h3>Program</h3>
 
-<div class="file-info" id="fileInfo"></div>
+<div class="meta">
 
-<div class="row camera">
-<button class="secondary" id="cameraBtn">📷 Record</button>
-<button class="danger" id="stopCameraBtn" disabled>Stop</button>
-</div>
+<b>Name</b>
+<span id="metaName">—</span>
 
-</div>
+<b>Size</b>
+<span id="metaSize">—</span>
 
-<div class="section">
-<div class="section-title">Frame rate</div>
+<b>Format</b>
+<span id="metaFormat">—</span>
 
-<div class="field">
-<label for="fps">Extraction rate</label>
-<select id="fps">
-<option value="source">Source / 30 FPS fallback</option>
-<option value="30">30 FPS</option>
-<option value="24">24 FPS</option>
-<option value="15">15 FPS</option>
-<option value="10">10 FPS</option>
-<option value="5">5 FPS</option>
-</select>
-</div>
+<b>Status</b>
+<span id="metaStatus">
+<span class="badge">Waiting</span>
+</span>
 
-</div>
-
-<div class="section">
-<div class="section-title">Stacking</div>
-
-<div class="field">
-<label for="mode">Processing mode</label>
-<select id="mode">
-<option value="none">None — export individual frames</option>
-<option value="average">Average</option>
-<option value="median">Median</option>
-<option value="lighten">Lighten</option>
-<option value="darken">Darken</option>
-<option value="difference">Difference</option>
-</select>
 </div>
 
 </div>
 
 <div class="section">
 
-<button class="primary" id="processBtn" disabled>
-Extract Frames
-</button>
+<h3>Environment</h3>
+
+<div class="meta">
+
+<b>Emulator</b>
+<span>js-dos v8</span>
+
+<b>CPU</b>
+<span>386-compatible DOSBox</span>
+
+<b>Memory</b>
+<span>16 MB</span>
+
+<b>Filesystem</b>
+<span>Virtual C:</span>
 
 </div>
 
-<button class="secondary" id="clearBtn" style="width:100%">
-Clear
-</button>
-
 </div>
 
-<div class="panel preview">
-
-<div class="preview-head">
-<div class="preview-title">Preview</div>
-<div class="status" id="status">Waiting for video</div>
+<div class="section">
+<h3>Debug Log</h3>
 </div>
 
-<div class="viewer">
-
-<div class="empty" id="empty">
-<div class="empty-icon">◫</div>
-<div class="empty-text">No video loaded</div>
-<div class="empty-sub">Choose a video to begin</div>
-</div>
-
-<video id="video" controls playsinline></video>
-<canvas id="canvas"></canvas>
-<img class="result-image" id="resultImage">
-
-</div>
+<div id="log"></div>
 
 <div class="bottom">
-
-<div class="progress-wrap">
-<div class="progress" id="progress"></div>
+<span class="dot" id="statusDot"></span>
+<span id="bottomStatus">Ready</span>
 </div>
 
-<div class="progress-text">
-<span id="progressLabel">Ready</span>
-<span id="progressPercent">0%</span>
-</div>
-
-<div class="output-actions" id="outputActions">
-<button class="primary" id="downloadBtn">Download PNG</button>
-<button class="secondary" id="openBtn">Open Result</button>
-</div>
-
-<div class="log" id="log"></div>
-
-</div>
-
-</div>
-
-</div>
-
-<div class="footer">
-FrameForge · Browser-native video processing · No server, Python or FFmpeg required
 </div>
 
 </div>
 
 <script>
-const $=id=>document.getElementById(id);
+"use strict";
 
-const fileInput=$("fileInput");
-const dropzone=$("dropzone");
-const fileInfo=$("fileInfo");
-const video=$("video");
-const canvas=$("canvas");
-const ctx=canvas.getContext("2d",{willReadFrequently:true});
-const empty=$("empty");
-const processBtn=$("processBtn");
-const clearBtn=$("clearBtn");
-const cameraBtn=$("cameraBtn");
-const stopCameraBtn=$("stopCameraBtn");
-const statusEl=$("status");
-const progressBar=$("progress");
-const progressLabel=$("progressLabel");
-const progressPercent=$("progressPercent");
-const logEl=$("log");
-const resultImage=$("resultImage");
-const outputActions=$("outputActions");
-const downloadBtn=$("downloadBtn");
-const openBtn=$("openBtn");
+const dosElement=document.getElementById("dos");
+const fileInput=document.getElementById("fileInput");
+const placeholder=document.getElementById("placeholder");
+const loader=document.getElementById("loader");
+const loaderText=document.getElementById("loaderText");
+const logElement=document.getElementById("log");
 
-let currentFile=null;
-let videoURL=null;
-let resultURL=null;
-let cameraStream=null;
-let recorder=null;
-let recordedChunks=[];
+const metaName=document.getElementById("metaName");
+const metaSize=document.getElementById("metaSize");
+const metaFormat=document.getElementById("metaFormat");
+const metaStatus=document.getElementById("metaStatus");
 
-function log(message){
-const time=new Date().toLocaleTimeString();
-logEl.textContent+=`[${time}] ${message}\n`;
-logEl.scrollTop=logEl.scrollHeight;
+const statusDot=document.getElementById("statusDot");
+const bottomStatus=document.getElementById("bottomStatus");
+
+const restartBtn=document.getElementById("restartBtn");
+const pauseBtn=document.getElementById("pauseBtn");
+const fullscreenBtn=document.getElementById("fullscreenBtn");
+const copyBtn=document.getElementById("copyBtn");
+const clearBtn=document.getElementById("clearBtn");
+
+let selectedFiles=[];
+let mainFile=null;
+let dosInstance=null;
+let commandInterface=null;
+let currentFs=[];
+let currentProgramName="";
+let running=false;
+let paused=false;
+let launching=false;
+
+function now(){
+return new Date().toLocaleTimeString();
 }
 
-function setStatus(message){
-statusEl.textContent=message;
-}
-
-function progress(value,label){
-value=Math.max(0,Math.min(100,value));
-progressBar.style.width=value+"%";
-progressPercent.textContent=Math.round(value)+"%";
-progressLabel.textContent=label||"";
-}
-
-function formatBytes(bytes){
-if(!bytes)return"0 B";
-const units=["B","KB","MB","GB"];
-const i=Math.floor(Math.log(bytes)/Math.log(1024));
-return`${(bytes/Math.pow(1024,i)).toFixed(i?2:0)} ${units[i]}`;
-}
-
-function resetResult(){
-if(resultURL){
-URL.revokeObjectURL(resultURL);
-resultURL=null;
-}
-
-resultImage.style.display="none";
-resultImage.removeAttribute("src");
-outputActions.style.display="none";
-}
-
-function loadFile(file){
-
-if(!file)return;
-
-if(!file.type.startsWith("video/")){
-log("Rejected file: not a video");
-return;
-}
-
-currentFile=file;
-
-if(videoURL){
-URL.revokeObjectURL(videoURL);
-}
-
-videoURL=URL.createObjectURL(file);
-video.src=videoURL;
-video.style.display="block";
-empty.style.display="none";
-
-resetResult();
-
-fileInfo.style.display="block";
-fileInfo.innerHTML=
-`<strong>${escapeHTML(file.name)}</strong><br>`+
-`${formatBytes(file.size)} · ${file.type||"video"}`;
-
-processBtn.disabled=false;
-
-setStatus("Loading video...");
-progress(0,"Loading");
-
-video.onloadedmetadata=()=>{
-setStatus("Video ready");
-progress(0,"Ready");
-
-log(
-`Loaded ${file.name} · `+
-`${video.videoWidth}×${video.videoHeight} · `+
-`${video.duration.toFixed(2)}s`
-);
-};
-
-video.onerror=()=>{
-setStatus("Video error");
-log("Browser could not decode this video.");
-};
-
-log(`Loaded file: ${file.name}`);
-}
-
-function escapeHTML(text){
-return String(text).replace(/[&<>"']/g,m=>({
+function escapeHtml(value){
+return String(value).replace(/[&<>"']/g,function(c){
+return {
 "&":"&amp;",
 "<":"&lt;",
 ">":"&gt;",
 '"':"&quot;",
-"'":"&#039;"
-}[m]));
+"'":"&#39;"
+}[c];
+});
 }
 
-dropzone.addEventListener("click",()=>{
-fileInput.click();
-});
+function log(message,type=""){
+const line=document.createElement("div");
 
-fileInput.addEventListener("change",()=>{
-if(fileInput.files.length){
-loadFile(fileInput.files[0]);
-}
-});
-
-["dragenter","dragover"].forEach(event=>{
-dropzone.addEventListener(event,e=>{
-e.preventDefault();
-dropzone.classList.add("drag");
-});
-});
-
-["dragleave","drop"].forEach(event=>{
-dropzone.addEventListener(event,e=>{
-e.preventDefault();
-dropzone.classList.remove("drag");
-});
-});
-
-dropzone.addEventListener("drop",e=>{
-const file=e.dataTransfer.files[0];
-if(file)loadFile(file);
-});
-
-function seek(video,time){
-
-return new Promise((resolve,reject)=>{
-
-let done=false;
-
-const finish=()=>{
-if(done)return;
-done=true;
-video.removeEventListener("seeked",finish);
-video.removeEventListener("error",error);
-resolve();
-};
-
-const error=()=>{
-if(done)return;
-done=true;
-video.removeEventListener("seeked",finish);
-video.removeEventListener("error",error);
-reject(new Error("Video seek failed"));
-};
-
-video.addEventListener("seeked",finish,{once:true});
-video.addEventListener("error",error,{once:true});
-
-try{
-video.currentTime=Math.max(
-0,
-Math.min(time,Math.max(0,video.duration-.001))
+line.className="logLine "+(
+type==="error"?"logError":
+type==="warn"?"logWarn":
+type==="good"?"logGood":""
 );
-}catch(err){
-error();
+
+line.innerHTML=
+'<span class="logTime">['+
+now()+
+']</span> '+
+escapeHtml(message);
+
+logElement.appendChild(line);
+logElement.scrollTop=logElement.scrollHeight;
 }
 
-});
-
+function setStatus(text,type=""){
+bottomStatus.textContent=text;
+statusDot.className="dot "+type;
 }
 
-function canvasPNG(canvas){
-
-return new Promise((resolve,reject)=>{
-
-canvas.toBlob(blob=>{
-if(blob)resolve(blob);
-else reject(new Error("Could not encode PNG"));
-},"image/png");
-
-});
-
+function setMetaStatus(text){
+metaStatus.innerHTML=
+'<span class="badge">'+
+escapeHtml(text)+
+'</span>';
 }
 
-function makeZip(files){
-
-const encoder=new TextEncoder();
-
-function crc32(bytes){
-
-let table=makeCRC();
-
-let crc=-1;
-
-for(let i=0;i<bytes.length;i++){
-crc=(crc>>>8)^table[(crc^bytes[i])&255];
+function showLoader(text){
+loaderText.textContent=text;
+loader.classList.add("show");
 }
 
-return(crc^(-1))>>>0;
-
+function hideLoader(){
+loader.classList.remove("show");
 }
 
-function makeCRC(){
-
-const table=new Uint32Array(256);
-
-for(let n=0;n<256;n++){
-
-let c=n;
-
-for(let k=0;k<8;k++){
-c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);
+function formatSize(bytes){
+if(bytes<1024)return bytes+" B";
+if(bytes<1024*1024)return (bytes/1024).toFixed(1)+" KB";
+return (bytes/(1024*1024)).toFixed(2)+" MB";
 }
 
-table[n]=c>>>0;
+function sanitizeDosName(name,index){
+let clean=name
+.replace(/[\/\\:*?"<>|]/g,"_")
+.replace(/\s+/g,"_")
+.toUpperCase();
 
+let parts=clean.split(".");
+let ext="";
+let base=clean;
+
+if(parts.length>1){
+ext=parts.pop()
+.replace(/[^A-Z0-9_$~!#%&'()@^`{}-]/g,"")
+.slice(0,3);
+
+base=parts.join(".");
 }
 
-return table;
+base=base
+.replace(/[^A-Z0-9_$~!#%&'()@^`{}-]/g,"")
+.slice(0,8);
 
+if(!base){
+base="FILE"+(index+1);
 }
 
-function u16(n){
-return new Uint8Array([
-n&255,
-(n>>>8)&255
-]);
+return ext?base+"."+ext:base;
 }
 
-function u32(n){
-return new Uint8Array([
-n&255,
-(n>>>8)&255,
-(n>>>16)&255,
-(n>>>24)&255
-]);
+function inspectExecutable(bytes,fileName){
+if(bytes.length<2){
+return{
+format:"Unknown",
+detail:"File is too small"
+};
 }
 
-function concat(parts){
+if(bytes[0]!==0x4D||bytes[1]!==0x5A){
 
-let size=parts.reduce((a,b)=>a+b.length,0);
-let out=new Uint8Array(size);
-let offset=0;
+const ext=(fileName.split(".").pop()||"").toLowerCase();
 
-for(const part of parts){
-out.set(part,offset);
-offset+=part.length;
+if(ext==="com"){
+return{
+format:"DOS COM",
+detail:"Raw DOS COM program"
+};
 }
 
-return out;
-
+if(ext==="bat"||ext==="cmd"){
+return{
+format:"DOS Batch",
+detail:"DOS command script"
+};
 }
-
-return Promise.all(files.map(async(file,index)=>{
-
-const name=encoder.encode(file.name);
-const data=new Uint8Array(await file.blob.arrayBuffer());
-const crc=crc32(data);
-
-const local=concat([
-u32(0x04034b50),
-u16(20),
-u16(0),
-u16(0),
-u16(0),
-u16(0),
-u32(crc),
-u32(data.length),
-u32(data.length),
-u16(name.length),
-u16(0),
-name,
-data
-]);
 
 return{
-local,
-name,
-data,
-crc
+format:"Data / Unknown",
+detail:"No MZ executable header"
 };
+}
 
-})).then(entries=>{
+let format="DOS MZ EXE";
+let detail="16-bit DOS executable";
 
-let offset=0;
-const central=[];
+if(bytes.length>=64){
 
-for(const entry of entries){
+const e_lfanew=
+bytes[0x3C]|
+(bytes[0x3D]<<8)|
+(bytes[0x3E]<<16)|
+(bytes[0x3F]<<24);
 
-const centralRecord=concat([
-u32(0x02014b50),
-u16(20),
-u16(20),
-u16(0),
-u16(0),
-u16(0),
-u16(0),
-u32(entry.crc),
-u32(entry.data.length),
-u32(entry.data.length),
-u16(entry.name.length),
-u16(0),
-u16(0),
-u16(0),
-u16(0),
-u32(0),
-u32(offset),
-entry.name
-]);
+if(
+e_lfanew>0 &&
+e_lfanew+2<=bytes.length
+){
 
-central.push(centralRecord);
-offset+=entry.local.length;
+const a=bytes[e_lfanew];
+const b=bytes[e_lfanew+1];
+
+if(a===0x4E&&b===0x45){
+format="NE executable";
+detail="New Executable / Windows 16-bit";
+}
+
+else if(a===0x50&&b===0x45){
+format="PE executable";
+detail="Portable Executable / Windows";
+}
+
+else if(a===0x4C&&b===0x45){
+format="LE executable";
+detail="Linear Executable";
+}
+
+else if(a===0x4C&&b===0x58){
+format="LX executable";
+detail="Linear Executable";
+}
 
 }
 
-const centralData=concat(central);
+}
 
-const end=concat([
-u32(0x06054b50),
-u16(0),
-u16(0),
-u16(entries.length),
-u16(entries.length),
-u32(centralData.length),
-u32(offset),
-u16(0)
-]);
+return{
+format,
+detail
+};
+}
 
-const all=[
-...entries.map(e=>e.local),
-centralData,
-end
-];
+async function readFile(file){
+return new Uint8Array(
+await file.arrayBuffer()
+);
+}
 
-return new Blob(all,{type:"application/zip"});
+function makeFs(files){
+
+return files.map(function(file,index){
+
+return{
+path:sanitizeDosName(file.name,index),
+contents:file.bytes
+};
 
 });
 
 }
 
-async function processVideo(){
+function buildConfig(programName){
 
-if(!currentFile)return;
+const ext=
+(programName.split(".").pop()||"")
+.toUpperCase();
 
-processBtn.disabled=true;
-resetResult();
+let command=programName;
+
+if(ext==="BAT"||ext==="CMD"){
+command="CALL "+programName;
+}
+
+return `
+[sdl]
+fullscreen=false
+output=surface
+autolock=true
+
+[dosbox]
+title=16-bit EXE Runner
+memsize=16
+
+[cpu]
+core=auto
+cputype=auto
+cycles=auto
+
+[render]
+aspect=true
+scaler=normal2x
+
+[autoexec]
+@echo off
+mount c .
+c:
+cls
+${command}
+echo.
+echo.
+echo Program finished.
+`;
+
+}
+
+async function stopDos(){
+
+if(!dosInstance){
+return;
+}
+
+log("Stopping previous DOSBox instance…");
 
 try{
 
-const mode=$("mode").value;
-
-if(!video.videoWidth||!video.videoHeight){
-throw new Error("Video metadata is not ready yet.");
+if(typeof dosInstance.stop==="function"){
+await dosInstance.stop();
 }
 
-const w=video.videoWidth;
-const h=video.videoHeight;
-
-canvas.width=w;
-canvas.height=h;
-
-const fpsValue=$("fps").value;
-const fps=fpsValue==="source"?30:Number(fpsValue);
-
-const duration=video.duration;
-
-if(!Number.isFinite(duration)||duration<=0){
-throw new Error("Invalid video duration.");
+}catch(error){
+log(
+"Error stopping DOSBox: "+
+(error.message||error),
+"warn"
+);
 }
 
-const count=Math.max(1,Math.ceil(duration*fps));
+dosInstance=null;
+commandInterface=null;
+running=false;
+paused=false;
 
-log(`Processing ${count} frame(s) at ${fps} FPS`);
-log(`Resolution: ${w}×${h}`);
-log(`Mode: ${mode}`);
+pauseBtn.disabled=true;
+restartBtn.disabled=true;
+pauseBtn.textContent="Ⅱ Pause";
+}
 
-if(mode==="none"){
+function setupCommandInterface(ci){
 
-const files=[];
+commandInterface=ci;
 
-for(let i=0;i<count;i++){
-
-const time=Math.min(
-duration-.001,
-i/fps
+if(!ci){
+log(
+"ci-ready was received without a CommandInterface.",
+"error"
 );
 
-await seek(video,time);
+return;
+}
 
-ctx.clearRect(0,0,w,h);
+running=true;
+paused=false;
+launching=false;
 
-ctx.drawImage(
-video,
-0,
-0,
-w,
-h
+restartBtn.disabled=false;
+pauseBtn.disabled=false;
+
+setStatus("Running","good");
+setMetaStatus("Running");
+hideLoader();
+
+log(
+"Command interface ready.",
+"good"
 );
 
-const blob=await canvasPNG(canvas);
+log(
+"DOSBox is now executing the autoexec command."
+);
 
-files.push({
-name:`frame_${String(i+1).padStart(6,"0")}.png`,
-blob
+try{
+
+if(typeof ci.events==="function"){
+
+const events=ci.events();
+
+if(events&&typeof events.onError==="function"){
+
+events.onError(function(error){
+
+log(
+"DOSBox error: "+
+(error&&error.message?
+error.message:
+error),
+"error"
+);
+
 });
 
-const p=(i+1)/count*95;
-
-progress(
-p,
-`Encoding frame ${i+1}/${count}`
-);
-
-setStatus(`Frame ${i+1}/${count}`);
+}
 
 }
 
-progress(100,"Creating ZIP");
+}catch(error){
 
-const zip=await makeZip(files);
-
-showResult(
-URL.createObjectURL(zip),
-"frameforge_frames.zip",
-false
-);
-
-resultURL=URL.createObjectURL(zip);
-
-downloadBtn.textContent="Download ZIP";
-downloadBtn.onclick=()=>{
-downloadURL(resultURL,"frameforge_frames.zip");
-};
-
-openBtn.onclick=()=>{
-window.open(resultURL,"_blank");
-};
-
-progress(100,"Complete");
-setStatus("Extraction complete");
-
-log(`Created ZIP containing ${files.length} PNG frame(s)`);
-
-}else{
-
-let acc=null;
-let median=[];
-
-const maxMedianFrames=80;
-const actualCount=
-mode==="median"
-?Math.min(count,maxMedianFrames)
-:count;
-
-if(mode==="median"&&count>maxMedianFrames){
 log(
-`Median limited to ${maxMedianFrames} frames `+
-`to avoid excessive browser memory use.`
-);
-}
-
-for(let i=0;i<actualCount;i++){
-
-const time=Math.min(
-duration-.001,
-i/fps
-);
-
-await seek(video,time);
-
-ctx.clearRect(0,0,w,h);
-
-ctx.drawImage(
-video,
-0,
-0,
-w,
-h
-);
-
-const dta=ctx.getImageData(
-0,
-0,
-w,
-h
-);
-
-if(mode==="median"){
-
-median.push(
-new Uint8ClampedArray(dta.data)
-);
-
-}else if(mode==="average"){
-
-if(!acc){
-
-acc=new Float64Array(
-dta.data.length
-);
-
-for(let p=0;p<dta.data.length;p+=4){
-acc[p]=dta.data[p];
-acc[p+1]=dta.data[p+1];
-acc[p+2]=dta.data[p+2];
-acc[p+3]=255;
-}
-
-}else{
-
-for(let p=0;p<acc.length;p+=4){
-
-acc[p]+=dta.data[p];
-acc[p+1]+=dta.data[p+1];
-acc[p+2]+=dta.data[p+2];
-
-}
-
-}
-
-}else{
-
-if(!acc){
-
-acc=new Uint8ClampedArray(
-dta.data
-);
-
-}else{
-
-for(let p=0;p<acc.length;p+=4){
-
-if(mode==="lighten"){
-
-acc[p]=Math.max(
-acc[p],
-dta.data[p]
-);
-
-acc[p+1]=Math.max(
-acc[p+1],
-dta.data[p+1]
-);
-
-acc[p+2]=Math.max(
-acc[p+2],
-dta.data[p+2]
-);
-
-}else if(mode==="darken"){
-
-acc[p]=Math.min(
-acc[p],
-dta.data[p]
-);
-
-acc[p+1]=Math.min(
-acc[p+1],
-dta.data[p+1]
-);
-
-acc[p+2]=Math.min(
-acc[p+2],
-dta.data[p+2]
-);
-
-}else{
-
-acc[p]=Math.abs(
-acc[p]-dta.data[p]
-);
-
-acc[p+1]=Math.abs(
-acc[p+1]-dta.data[p+1]
-);
-
-acc[p+2]=Math.abs(
-acc[p+2]-dta.data[p+2]
+"Event hook warning: "+
+(error.message||error),
+"warn"
 );
 
 }
 
 }
 
+async function launch(){
+
+if(!mainFile){
+log(
+"No program selected.",
+"warn"
+);
+return;
 }
 
-}
+if(typeof Dos!=="function"){
 
-}
-
-progress(
-(i+1)/actualCount*75,
-`Reading frame ${i+1}/${actualCount}`
+log(
+"js-dos library is not available.",
+"error"
 );
 
 setStatus(
-`Reading frame ${i+1}/${actualCount}`
+"js-dos unavailable",
+"bad"
+);
+
+return;
+}
+
+if(launching){
+return;
+}
+
+launching=true;
+
+await stopDos();
+
+dosElement.innerHTML="";
+
+placeholder.style.display="none";
+
+showLoader("Preparing DOSBox…");
+
+setStatus(
+"Preparing…",
+"warn"
+);
+
+setMetaStatus("Preparing");
+
+currentFs=makeFs(selectedFiles);
+
+log(
+"Preparing virtual DOS filesystem…"
+);
+
+log(
+"Files loaded into virtual C: drive:"
+);
+
+for(const item of currentFs){
+
+log(
+"  C:\\"+
+item.path+
+" ("+
+formatSize(item.contents.length)+
+")"
 );
 
 }
 
-if(mode==="average"){
-
-for(let p=0;p<acc.length;p+=4){
-
-acc[p]=Math.round(
-acc[p]/actualCount
+const info=inspectExecutable(
+mainFile.bytes,
+mainFile.name
 );
 
-acc[p+1]=Math.round(
-acc[p+1]/actualCount
+metaName.textContent=mainFile.name;
+metaSize.textContent=formatSize(mainFile.bytes.length);
+metaFormat.textContent=info.format;
+
+log(
+"Executable type: "+
+info.format
 );
 
-acc[p+2]=Math.round(
-acc[p+2]/actualCount
+log(
+info.detail
 );
 
-acc[p+3]=255;
+if(info.format==="NE executable"){
 
-}
-
-}else if(mode==="median"){
-
-acc=new Uint8ClampedArray(
-w*h*4
+log(
+"WARNING: this is a Windows NE executable.",
+"warn"
 );
 
-for(let p=0;p<acc.length;p+=4){
-
-const r=[];
-const g=[];
-const b=[];
-
-for(const frame of median){
-
-r.push(frame[p]);
-g.push(frame[p+1]);
-b.push(frame[p+2]);
-
-}
-
-r.sort((a,b)=>a-b);
-g.sort((a,b)=>a-b);
-b.sort((a,b)=>a-b);
-
-const middle=r.length>>1;
-
-acc[p]=r[middle];
-acc[p+1]=g[middle];
-acc[p+2]=b[middle];
-acc[p+3]=255;
-
-if((p&16383)===0){
-
-progress(
-75+(p/acc.length)*24,
-"Calculating median"
+log(
+"DOSBox can only run it if a compatible Windows environment is installed.",
+"warn"
 );
 
 }
 
-}
-
-}
-
-if(!(acc instanceof Uint8ClampedArray)){
-
-acc=new Uint8ClampedArray(acc);
-
-}
-
-const out=new ImageData(
-acc,
-w,
-h
-);
-
-ctx.putImageData(
-out,
-0,
+currentProgramName=
+sanitizeDosName(
+mainFile.name,
 0
 );
 
-progress(99,"Encoding PNG");
-
-const pngBlob=await canvasPNG(canvas);
-
-const filename=`frameforge_${mode}.png`;
-
-const url=URL.createObjectURL(pngBlob);
-
-resultURL=url;
-
-resultImage.src=url;
-resultImage.style.display="block";
-video.style.display="none";
-
-outputActions.style.display="flex";
-
-downloadBtn.textContent="Download PNG";
-
-downloadBtn.onclick=()=>{
-downloadURL(
-url,
-filename
+const config=
+buildConfig(
+currentProgramName
 );
-};
-
-openBtn.onclick=()=>{
-window.open(
-url,
-"_blank"
-);
-};
-
-progress(100,"Complete");
-setStatus("Stack complete");
 
 log(
-`Created ${filename} · ${w}×${h}`
+"DOSBox configuration created."
 );
-
-}
-
-}catch(error){
-
-console.error(error);
-
-setStatus("Error");
-progress(0,"Error");
 
 log(
-`ERROR: ${error.message||error}`
+"Program command: "+
+currentProgramName
 );
 
-alert(
-"FrameForge error:\n\n"+
-(error.message||error)
+log(
+"Calling js-dos Dos()…"
 );
-
-}finally{
-
-processBtn.disabled=!currentFile;
-
-}
-
-}
-
-function downloadURL(url,name){
-
-const a=document.createElement("a");
-
-a.href=url;
-a.download=name;
-a.rel="noopener";
-
-document.body.appendChild(a);
-a.click();
-a.remove();
-
-}
-
-processBtn.addEventListener("click",processVideo);
-
-clearBtn.addEventListener("click",()=>{
-
-if(videoURL){
-URL.revokeObjectURL(videoURL);
-videoURL=null;
-}
-
-if(resultURL){
-URL.revokeObjectURL(resultURL);
-resultURL=null;
-}
-
-if(cameraStream){
-
-cameraStream.getTracks().forEach(
-track=>track.stop()
-);
-
-cameraStream=null;
-
-}
-
-video.pause();
-video.removeAttribute("src");
-video.load();
-
-currentFile=null;
-
-fileInput.value="";
-
-video.style.display="none";
-resultImage.style.display="none";
-empty.style.display="block";
-
-fileInfo.style.display="none";
-
-processBtn.disabled=true;
-
-outputActions.style.display="none";
-
-progress(0,"Ready");
-setStatus("Waiting for video");
-
-logEl.textContent="";
-
-});
-
-cameraBtn.addEventListener("click",async()=>{
 
 try{
 
-cameraStream=await navigator.mediaDevices.getUserMedia({
-video:true,
-audio:true
+dosInstance=Dos(
+dosElement,
+{
+
+dosboxConf:config,
+
+initFs:currentFs,
+
+autoStart:true,
+
+kiosk:true,
+
+thinSidebar:true,
+
+noCursor:true,
+
+pathPrefix:
+"https://v8.js-dos.com/latest/emulators/",
+
+onEvent:function(event,arg){
+
+log(
+"js-dos event: "+
+event
+);
+
+if(event==="emu-ready"){
+
+log(
+"Emulator backend loaded.",
+"good"
+);
+
+showLoader(
+"Starting DOSBox…"
+);
+
+}
+
+else if(event==="bnd-play"){
+
+log(
+"DOSBox play event received."
+);
+
+}
+
+else if(event==="ci-ready"){
+
+setupCommandInterface(arg);
+
+}
+
+else if(event==="fullscreen-change"){
+
+log(
+"Fullscreen: "+
+(arg?"on":"off")
+);
+
+}
+
+}
+
 });
 
-video.srcObject=cameraStream;
-video.style.display="block";
-empty.style.display="none";
-
-cameraBtn.disabled=true;
-stopCameraBtn.disabled=false;
-
-recordedChunks=[];
-
-recorder=new MediaRecorder(
-cameraStream,
-{mimeType:"video/webm"}
+log(
+"Dos() returned successfully.",
+"good"
 );
 
-recorder.ondataavailable=e=>{
+log(
+"Waiting for ci-ready…"
+);
 
-if(e.data.size>0){
-recordedChunks.push(e.data);
+}catch(error){
+
+launching=false;
+
+hideLoader();
+
+log(
+"START FAILED: "+
+(error&&error.message?
+error.message:
+error),
+"error"
+);
+
+setStatus(
+"Failed",
+"bad"
+);
+
+setMetaStatus("Error");
+
+console.error(error);
+
+return;
 }
-
-};
-
-recorder.onstop=()=>{
-
-const blob=new Blob(
-recordedChunks,
-{type:"video/webm"}
-);
-
-const file=new File(
-[blob],
-`camera_${Date.now()}.webm`,
-{type:"video/webm"}
-);
-
-loadFile(file);
-
-if(cameraStream){
-
-cameraStream.getTracks().forEach(
-track=>track.stop()
-);
-
-cameraStream=null;
 
 }
 
-cameraBtn.disabled=false;
-stopCameraBtn.disabled=true;
+async function restart(){
 
-log("Camera recording imported.");
+if(!mainFile){
+return;
+}
 
-};
+log(
+"Restart requested."
+);
 
-recorder.start();
+await launch();
 
-setStatus("Recording camera");
-log("Camera recording started.");
+}
+
+function togglePause(){
+
+if(!dosInstance){
+return;
+}
+
+try{
+
+paused=!paused;
+
+if(typeof dosInstance.setPaused==="function"){
+
+dosInstance.setPaused(
+paused
+);
+
+}
+
+else if(commandInterface){
+
+if(paused&&typeof commandInterface.pause==="function"){
+commandInterface.pause();
+}
+
+if(!paused&&typeof commandInterface.resume==="function"){
+commandInterface.resume();
+}
+
+}
+
+if(paused){
+
+pauseBtn.textContent="▶ Resume";
+
+setStatus(
+"Paused",
+"warn"
+);
+
+setMetaStatus("Paused");
+
+log(
+"Emulation paused.",
+"warn"
+);
+
+}else{
+
+pauseBtn.textContent="Ⅱ Pause";
+
+setStatus(
+"Running",
+"good"
+);
+
+setMetaStatus("Running");
+
+log(
+"Emulation resumed.",
+"good"
+);
+
+}
 
 }catch(error){
 
 log(
-`Camera error: ${error.message}`
+"Pause/resume error: "+
+(error.message||error),
+"error"
 );
 
-alert(
-"Camera access failed.\n\n"+
-(error.message||error)
+}
+
+}
+
+async function fullscreen(){
+
+try{
+
+if(document.fullscreenElement){
+
+await document.exitFullscreen();
+
+return;
+
+}
+
+await document
+.getElementById("stage")
+.requestFullscreen();
+
+}catch(error){
+
+log(
+"Fullscreen error: "+
+(error.message||error),
+"error"
+);
+
+}
+
+}
+
+fileInput.addEventListener(
+"change",
+async function(){
+
+const files=
+Array.from(
+fileInput.files||[]
+);
+
+if(!files.length){
+return;
+}
+
+showLoader(
+"Reading program files…"
+);
+
+try{
+
+selectedFiles=[];
+
+for(const file of files){
+
+const bytes=
+await readFile(file);
+
+selectedFiles.push({
+
+name:file.name,
+
+size:file.size,
+
+type:file.type,
+
+bytes
+
+});
+
+}
+
+mainFile=
+selectedFiles.find(function(file){
+
+const ext=
+(file.name.split(".").pop()||"")
+.toLowerCase();
+
+return[
+"exe",
+"com",
+"bat",
+"cmd"
+].includes(ext);
+
+})||
+selectedFiles[0];
+
+if(!mainFile){
+
+throw new Error(
+"No executable or batch file found."
+);
+
+}
+
+const info=
+inspectExecutable(
+mainFile.bytes,
+mainFile.name
+);
+
+metaName.textContent=
+mainFile.name;
+
+metaSize.textContent=
+formatSize(mainFile.bytes.length);
+
+metaFormat.textContent=
+info.format;
+
+setMetaStatus("Loaded");
+
+placeholder.style.display="none";
+
+log(
+"Selected "+
+selectedFiles.length+
+" file(s).",
+"good"
+);
+
+for(const file of selectedFiles){
+
+log(
+"  "+
+file.name+
+" — "+
+formatSize(file.size)
+);
+
+}
+
+log(
+"Main program: "+
+mainFile.name
+);
+
+log(
+"Format: "+
+info.format
+);
+
+setStatus(
+"Ready to launch",
+"good"
+);
+
+restartBtn.disabled=false;
+
+await launch();
+
+}catch(error){
+
+hideLoader();
+
+log(
+"File loading failed: "+
+(error.message||error),
+"error"
+);
+
+setStatus(
+"Load failed",
+"bad"
+);
+
+setMetaStatus("Error");
+
+}
+
+});
+
+restartBtn.addEventListener(
+"click",
+restart
+);
+
+pauseBtn.addEventListener(
+"click",
+togglePause
+);
+
+fullscreenBtn.addEventListener(
+"click",
+fullscreen
+);
+
+copyBtn.addEventListener(
+"click",
+async function(){
+
+const text=
+Array.from(
+logElement.children
+)
+.map(function(x){
+return x.textContent;
+})
+.join("\n");
+
+try{
+
+await navigator.clipboard.writeText(
+text
+);
+
+log(
+"Log copied to clipboard.",
+"good"
+);
+
+}catch(error){
+
+log(
+"Could not copy log: "+
+(error.message||error),
+"error"
 );
 
 }
 
 });
 
-stopCameraBtn.addEventListener("click",()=>{
+clearBtn.addEventListener(
+"click",
+function(){
+logElement.innerHTML="";
+});
 
-if(recorder&&recorder.state!=="inactive"){
-recorder.stop();
-}
+document.addEventListener(
+"fullscreenchange",
+function(){
 
-if(cameraStream){
-
-cameraStream.getTracks().forEach(
-track=>track.stop()
-);
-
-}
-
-cameraBtn.disabled=false;
-stopCameraBtn.disabled=true;
+fullscreenBtn.textContent=
+document.fullscreenElement?
+"⛶ Exit Fullscreen":
+"⛶ Fullscreen";
 
 });
 
-window.addEventListener("beforeunload",()=>{
+window.addEventListener(
+"beforeunload",
+function(){
 
-if(videoURL){
-URL.revokeObjectURL(videoURL);
-}
+if(dosInstance&&
+typeof dosInstance.stop==="function"){
 
-if(resultURL){
-URL.revokeObjectURL(resultURL);
-}
-
-if(cameraStream){
-
-cameraStream.getTracks().forEach(
-track=>track.stop()
-);
+dosInstance.stop();
 
 }
 
 });
 
-log("FrameForge initialized.");
-log("Browser-side video processing ready.");
+log(
+"16-bit EXE Runner initialized.",
+"good"
+);
+
+log(
+"js-dos v8 loader detected: "+
+(typeof Dos==="function"?"yes":"no")
+);
+
+if(location.protocol==="file:"){
+
+log(
+"WARNING: page is running from file://",
+"warn"
+);
+
+log(
+"js-dos officially requires HTTP/HTTPS hosting.",
+"warn"
+);
+
+}
+
+setStatus("Ready");
 </script>
 
 </body>
